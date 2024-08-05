@@ -1,3 +1,0 @@
-[submodule "demo-application"]
-	path = demo-application
-	url = git@github.com:seahal/demo-application.git
