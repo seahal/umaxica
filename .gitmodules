@@ -1,3 +1,6 @@
 [submodule "application"]
 	path = application
 	url = git@github.com:seahal/demo-application.git
+[submodule "infrastructure"]
+	path = infrastructure
+	url = git@github.com:seahal/demo-infrastructure.git
