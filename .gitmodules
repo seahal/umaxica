@@ -4,3 +4,9 @@
 [submodule "infrastructure"]
 	path = infrastructure
 	url = git@github.com:seahal/demo-infrastructure.git
+[submodule "app/ror"]
+	path = app/ror
+	url = git@github.com:seahal/demo-application-ror.git
+[submodule "app/remix"]
+	path = app/remix
+	url = git@github.com:seahal/demo-application-remix.git

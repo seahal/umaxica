@@ -1,0 +1,170 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    ports:
+      - "9092:9092"
+    networks:
+      - backend
+    environment:
+      CLUSTER_ID: kafka-docker-cluster-1
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
+      KAFKA_BROKER_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:9093
+      ALLOW_PLAINTEXT_LISTENER: 'yes'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+#  elasticsearch:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
+#    networks:
+#      - backend
+#    ports:
+#      - 9200:9200
+#    environment:
+#      - discovery.type=single-node
+#      - xpack.security.enabled=false
+#      - ELASTIC_PASSWORD=password
+#    ulimits:
+#      memlock:
+#        soft: -1
+#        hard: -1
+#    volumes:
+#      - elasticsearch-data-1:/usr/share/elasticsearch/config/certs
+  db-postgresql:
+    image: postgres:16.4
+    networks:
+      - backend
+    environment:
+      POSTGRES_USER: default
+      POSTGRES_PASSWORD: password
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+    restart: always
+    user: root
+  minio:
+    image: minio/minio:RELEASE.2023-07-11T21-29-34Z
+    volumes:
+      - minio-data-1:/data
+    command: server --console-address ":9001" /data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - backend
+    environment:
+      MINIO_ROOT_USER: default
+      MINIO_ROOT_PASSWORD: password
+      MINIO_DEFAULT_BUCKETS: application
+  redis:
+    image: redis:7.0.15-alpine3.20
+    networks:
+      - backend
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_volume:/data
+  valkey:
+    image: 'valkey/valkey:7.2.6-alpine'
+    volumes:
+      - valkey_volume:/data
+    command: valkey-server
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    ports:
+      - '6380:6379'
+  ror:
+    build:
+      context: ror/.devcontainer/
+      target: development
+    user: '1000:1000'
+    command: bash -c "bin/dev"
+    restart: always
+    tty: true
+    stdin_open: true
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - ./ror:/ror
+    networks:
+      - backend
+    depends_on:
+      - db-postgresql
+      - redis
+      - valkey
+      - minio
+  remix:
+    build:
+      context: ./remix
+      target: development
+    command: bash -c "npm run dev"
+    user: '1000:1000'
+    restart: always # コンテナが停止すると常に再起動
+    tty: true
+    stdin_open: true
+    ports:
+      - '4000:4000'
+      - "5173:5173"
+      - "8002:8002"
+    networks:
+      - frontend
+    volumes:
+      - ./remix:/remix
+    depends_on:
+      - ror
+  # express:
+  #   build:
+  #     context: ./express
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - ./express:/express
+  # cargo:
+  #   build:
+  #     context: ./cargo
+  #     target: development
+  #   tty: true
+  #   stdin_open: true
+  #   command:  bash -c "ls -F | grep '/' | xargs -I {} bash -c 'cd ./{}; cargo run'"
+  #   networks:
+  #     - frontend
+  #   volumes:
+  #     - ./cargo:/cargo
+  selenium:
+    image: seleniarm/standalone-chromium
+    restart: always # コンテナが停止すると常に再起動
+    networks:
+      - backend
+      - frontend
+    ports:
+      - "4444:4444"
+      - "5900:5900"
+      - "7900:7900"
+    depends_on:
+      - ror
+volumes: #
+  postgres_volume:
+  redis_volume:
+  valkey_volume:
+  elasticsearch-data-1:
+  minio-data-1:
+networks:
+  backend:
+  frontend:
