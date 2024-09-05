@@ -94,7 +94,7 @@ services:
       context: ror/.devcontainer/
       target: development
     user: '1000:1000'
-    command: bash -c "bin/dev"
+    command: bash -c "sleep infinity"
     restart: always
     tty: true
     stdin_open: true
@@ -129,24 +129,6 @@ services:
       - ./remix:/remix
     depends_on:
       - ror
-  # express:
-  #   build:
-  #     context: ./express
-  #   networks:
-  #     - backend
-  #   volumes:
-  #     - ./express:/express
-  # cargo:
-  #   build:
-  #     context: ./cargo
-  #     target: development
-  #   tty: true
-  #   stdin_open: true
-  #   command:  bash -c "ls -F | grep '/' | xargs -I {} bash -c 'cd ./{}; cargo run'"
-  #   networks:
-  #     - frontend
-  #   volumes:
-  #     - ./cargo:/cargo
   selenium:
     image: seleniarm/standalone-chromium
     restart: always # コンテナが停止すると常に再起動
