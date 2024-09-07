@@ -1,3 +1,4 @@
+name: 'app'
 services:
   kafka:
     image: confluentinc/cp-kafka:7.7.0
@@ -38,7 +39,7 @@ services:
 #        hard: -1
 #    volumes:
 #      - elasticsearch-data-1:/usr/share/elasticsearch/config/certs
-  db-postgresql:
+  db-psql-w:
     image: postgres:16.4
     networks:
       - backend
@@ -94,27 +95,26 @@ services:
       context: ror/.devcontainer/
       target: development
     user: '1000:1000'
-    command: bash -c "sleep infinity"
+    command: bash -c "bin/dev"
     restart: always
     tty: true
     stdin_open: true
     ports:
       - "3000:3000"
-      - "3001:3001"
     volumes:
       - ./ror:/ror
     networks:
       - backend
     depends_on:
-      - db-postgresql
+      - db-psql-w
       - redis
       - valkey
       - minio
   remix:
     build:
-      context: ./remix
+      context: remix/.devcontainer/
       target: development
-    command: bash -c "npm run dev"
+    command: bash -c "bun run dev"
     user: '1000:1000'
     restart: always # コンテナが停止すると常に再起動
     tty: true
