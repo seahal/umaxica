@@ -94,7 +94,6 @@ services:
     build:
       context: ror/.devcontainer/
       target: development
-    user: '1000:1000'
     command: bash -c "bin/dev"
     restart: always
     tty: true
@@ -115,7 +114,6 @@ services:
       context: remix/.devcontainer/
       target: development
     command: bash -c "bun run dev"
-    user: '1000:1000'
     restart: always # コンテナが停止すると常に再起動
     tty: true
     stdin_open: true
