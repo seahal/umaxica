@@ -1,0 +1,23 @@
+apiVersion:  apps/v1
+kind: Deployment
+metadata:
+  name: app-ror
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: app-ror
+  template:
+    metadata:
+      labels:
+        run: app-ror
+    spec:
+      containers:
+        - name: app-ror
+          image: asia-northeast1-docker.pkg.dev/umaxica/images/ror:latest
+          resources:
+            requests:
+              cpu: 100m
+          ports:
+            - containerPort: 3000
