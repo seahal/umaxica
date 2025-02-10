@@ -1,85 +1,25 @@
 name: 'app'
 services:
-  kafka:
-    image: confluentinc/cp-kafka:7.7.0
-    ports:
-      - "9092:9092"
+  opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    restart: always
     networks:
       - backend
+    ports:
+      - 9200:9200
     environment:
-      CLUSTER_ID: kafka-docker-cluster-1
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
-      KAFKA_BROKER_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:9093
-      ALLOW_PLAINTEXT_LISTENER: 'yes'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
-      KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
-#  elasticsearch:
-#    image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
-#    networks:
-#      - backend
-#    ports:
-#      - 9200:9200
-#    environment:
-#      - discovery.type=single-node
-#      - xpack.security.enabled=false
-#      - ELASTIC_PASSWORD=password
-#    ulimits:
-#      memlock:
-#        soft: -1
-#        hard: -1
-#    volumes:
-#      - elasticsearch-data-1:/usr/share/elasticsearch/config/certs
-  # db-psql-writer:
-  #   image: postgres:16.6
-  #   command: -c 'config_file=/etc/postgresql/postgresql.conf' -c 'hba_file=/etc/postgresql/pg_hba.conf'
-  #   networks:
-  #     - backend
-  #   environment:
-  #     POSTGRES_USER: default
-  #     POSTGRES_PASSWORD: password
-  #     TZ: UTC
-  #     PGTZ: UTC
-  #     POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all 0.0.0.0/0 md5"
-  #     POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - ./docker/db-psql-writer/init.sh:/docker-entrypoint-initdb.d/init.sh
-  #     - ./docker/db-psql-writer/postgresql.conf:/etc/postgresql/postgresql.conf
-  #     - ./docker/db-psql-writer/pg_hba.conf:/etc/postgresql/pg_hba.conf
-  #   tmpfs:
-  #     - /var/lib/postgresql/data
-  #   restart: always
-  # db-psql-reader:
-  #   image: postgres:16.6
-  #   networks:
-  #     - backend
-  #   environment:
-  #     POSTGRES_USER: default
-  #     POSTGRES_PASSWORD: password
-  #     TZ: UTC
-  #     PGTZ: UTC
-  #   entrypoint: /entrypoint.sh
-  #   ports:
-  #     - "5433:5432"
-  #   depends_on:
-  #     - db-psql-writer
-  #   volumes:
-  #     - ./docker/db-psql-reader/entrypoint.sh:/entrypoint.sh
-  #     - ./docker/db-psql-reader/postgresql.conf:/etc/postgresql/postgresql.conf
-  #     - ./docker/db-psql-reader/pg_hba.conf:/etc/postgresql/pg_hba.conf
-  #   tmpfs:
-  #     - /var/lib/postgresql/data
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD='Str0ngPassw0rd'
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-volume:/usr/share/opensearch/data
   psql-auth-pub:
     image: postgres:16.6
     networks:
@@ -149,7 +89,7 @@ services:
     # tmpfs:
     #   - /var/lib/postgresql/data
   minio:
-    image: minio/minio:RELEASE.2023-07-11T21-29-34Z
+    image: minio/minio:RELEASE.2025-02-07T23-21-09Z-cpuv1
     volumes:
       - minio-data-1:/data
     command: server --console-address ":9001" /data
@@ -162,28 +102,65 @@ services:
       MINIO_ROOT_USER: default
       MINIO_ROOT_PASSWORD: password
       MINIO_DEFAULT_BUCKETS: application
-  redis:
-    image: redis:7.0.15-alpine3.20
+  vk-session: # AWS MemoryDB
+    image: 'valkey/valkey:7.2'
     networks:
       - backend
     ports:
       - "6379:6379"
     volumes:
-      - redis_volume:/data
-  valkey:
-    image: 'valkey/valkey:7.2.6-alpine'
+      - vk-session-data:/data
+  vk-cache: # AWS ElastiCache
+    image: 'valkey/valkey:8.0'
     volumes:
-      - valkey_volume:/data
-    command: valkey-server
+      - vk-cache-volume:/data
     networks:
       - backend
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 1s
-      timeout: 3s
-      retries: 5
     ports:
       - '6380:6379'
+  kafka-broker:
+    image: confluentinc/cp-kafka:6.2.4 # https://hub.docker.com/r/confluentinc/cp-kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_DOCKER_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker:19092,PLAINTEXT_DOCKER_INTERNAL://localhost:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: kafka-broker
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  zookeeper:
+    image: confluentinc/cp-zookeeper:6.2.4 # https://hub.docker.com/r/confluentinc/cp-zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: "2181"
+  cp-kafka-rest:
+    image: confluentinc/cp-kafka-rest:6.2.4         # https://hub.docker.com/r/confluentinc/cp-kafka-rest
+    restart: always
+    depends_on:
+      - "kafka-broker"
+      - "zookeeper"
+    environment:
+      KAFKA_REST_BOOTSTRAP_SERVERS: "kafka-broker:19092"
+      KAFKA_REST_CLIENT_SECURITY_PROTOCOL: "PLAINTEXT"
+      KAFKA_REST_HOST_NAME: "cp-kafka-rest"
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+  kafka-topic-ui:    # 管理コンソール（http://localhost:8000）
+    image: landoop/kafka-topics-ui:0.9.4    # https://hub.docker.com/r/landoop/kafka-topics-ui
+    restart: always
+    depends_on:
+      - "kafka-broker"
+      - "zookeeper"
+      - "cp-kafka-rest"
+    ports:
+      - "8000:8000"
+    environment:
+      KAFKA_REST_PROXY_URL: "http://cp-kafka-rest:8082"
+      PROXY: "true"
   ror:
     build:
       context: ror/
@@ -200,9 +177,8 @@ services:
     networks:
       - backend
     depends_on:
-#      - db-psql-reader
-      - redis
-      - valkey
+      - vk-cache
+      - vk-session
       - minio
 #  remix:
 #    build:
@@ -222,18 +198,18 @@ services:
 #      - ./remix:/remix
 #    depends_on:
 #      - ror
-  # selenium:
-  #   image: seleniarm/standalone-chromium
-  #   restart: always # コンテナが停止すると常に再起動
-  #   networks:
-  #     - backend
-  #     - frontend
-  #   ports:
-  #     - "4444:4444"
-  #     - "5900:5900"
-  #     - "7900:7900"
-  #   depends_on:
-  #     - ror
+  selenium:
+    image: seleniarm/standalone-chromium
+    restart: always # コンテナが停止すると常に再起動
+    networks:
+      - backend
+      - frontend
+    ports:
+      - "4444:4444"
+      - "5900:5900"
+      - "7900:7900"
+    depends_on:
+      - ror
 volumes: #
   postgres_volume_writer:
   postgres_volume_reader:
@@ -241,9 +217,9 @@ volumes: #
   psql-auth-sub-volume:
   psql-core-pub-volume:
   psql-core-sub-volume:
-  redis_volume:
-  valkey_volume:
-  elasticsearch-data-1:
+  vk-session-data:
+  vk-cache-volume:
+  opensearch-volume:
   minio-data-1:
 networks:
   backend:
