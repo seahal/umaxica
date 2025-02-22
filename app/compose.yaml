@@ -34,40 +34,6 @@ services:
       # - ./docker/psql-auth-sub/pg_hba.conf:/etc/postgresql/pg_hba.conf
     tmpfs:
       - /var/lib/postgresql/data
-  # psql-core-pub:
-  #   image: postgres:16.6
-  #   networks:
-  #     - backend
-  #   environment:
-  #     POSTGRES_USER: default
-  #     POSTGRES_PASSWORD: password
-  #     TZ: UTC
-  #   ports:
-  #     - "5435:5432"
-  #   volumes:
-  #     -   psql-core-pub-volume:/var/lib/postgresql/data
-  #     # - ./docker/psql-core-pub/init.sh:/docker-entrypoint-initdb.d/init.sh
-  #     # - ./docker/psql-core-pub/postgresql.conf:/etc/postgresql/postgresql.conf
-  #     # - ./docker/psql-core-pub/pg_hba.conf:/etc/postgresql/pg_hba.conf
-  #   # tmpfs:
-  #   #   - /var/lib/postgresql/data
-  # psql-core-sub:
-  #   image: postgres:16.6
-  #   volumes:
-  #     - psql-core-sub-volume:/var/lib/postgresql/data
-  #     # - ./docker/psql-core-sub/init.sh:/docker-entrypoint-initdb.d/init.sh
-  #     # - ./docker/psql-core-sub/postgresql.conf:/etc/postgresql/postgresql.conf
-  #     # - ./docker/psql-core-sub/pg_hba.conf:/etc/postgresql/pg_hba.conf
-  #   networks:
-  #     - backend
-  #   environment:
-  #     POSTGRES_USER: default
-  #     POSTGRES_PASSWORD: password
-  #     TZ: UTC
-  #   ports:
-  #     - "5436:5432"
-  #   # tmpfs:
-  #   #   - /var/lib/postgresql/data
   minio:
     image: minio/minio:RELEASE.2025-02-07T23-21-09Z-cpuv1
     volumes:
