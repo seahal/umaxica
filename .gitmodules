@@ -1,12 +1,12 @@
-[submodule "application"]
-	path = application
-	url = git@github.com:seahal/demo-application.git
-[submodule "infrastructure"]
-	path = infrastructure
-	url = git@github.com:seahal/demo-infrastructure.git
 [submodule "app/ror"]
 	path = app/ror
-	url = git@github.com:seahal/demo-application-ror.git
+	url = git@github.com:seahal/umaxica-app-ruby-on-rails.git
 [submodule "app/remix"]
 	path = app/remix
 	url = git@github.com:seahal/demo-application-remix.git
+[submodule "devops/kubernetes"]
+	path = devops/kubernetes
+	url = git@github.com:seahal/umaxica-devops-kubernetes.git
+[submodule "devops/terraform"]
+	path = devops/terraform
+	url = git@github.com:seahal/umaxica-devops-terraform.git
